@@ -43,7 +43,7 @@ const TodoList = () => {
     const newTodos = [];
 
     results.docs.forEach((doc) => {
-      newTodos.push({ id: doc,id, ...doc.data() });
+      newTodos.push({ id: doc.id, ...doc.data() });
     });
 
     setTodos(newTodos);

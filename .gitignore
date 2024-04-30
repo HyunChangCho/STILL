@@ -27,6 +27,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+#env 9주차 수업!!
 
 # vercel
 .vercel

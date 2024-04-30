@@ -5,31 +5,90 @@
 */
 "use client";
 
-import React, { useState } from "react";
+
+
+import React, { useState, useEffect } from "react";
 import TodoItem from "@/components/TodoItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+//import styles from "@/styles/Todolist.module.css"
+import {db} from "@/firebase";
+import{
+  collection,
+  query,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  orderBy,
+  where,  
+} from "firebase/firestore";
+//컬렉션 사용시 잘못된 컬렉션 이름 사용 방지
+const todoCollection = collection(db, "todos");
+
 
 const TodoList = () => {
   const [todos, setTodos] = useState([]);
   const [input, setInput] = useState("");
 
-  const addTodo = () => {
+  useEffect(() => {
+    getTodos();
+  }, []);
+
+  const getTodos = async () =>{
+    const q = query(todoCollection);
+
+    const results = await getDocs(q);
+    const newTodos = [];
+
+    results.docs.forEach((doc) => {
+      newTodos.push({ id: doc,id, ...doc.data() });
+    });
+
+    setTodos(newTodos);
+  }
+
+  const addTodo = async () => {
     if (input.trim() === "") return;
-    setTodos([...todos, { id: Date.now(), text: input, completed: false }]);
+
+    const docref = await addDoc(todoCollection, {
+      text: input,
+      completed: false,
+    });
+
+    setTodos([...todos, { id: docref.id, text: input, completed: false }]);
     setInput("");
   };
 
+
+
   const toggleTodo = (id) => {
     setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
-  };
+      todos.map((todo) =>{
+      //   todo.id === id ? { ...todo, completed: !todo.completed } : todo,
+      if (todo.id ===id){
+        const todoDoc = doc(todoCollection, id);
+        updateDoc(todoDoc, {completed: !todo.completed});
+        return {...todo,completed: !todo.completed};
+      }else{
+        return todo;
+      }
+
+        }
+        ),
+      );
+    };
 
   const deleteTodo = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+    const todoDoc = doc(todoCollection, id);
+    deleteDoc(todoDoc);
+
+    setTodos(
+      todos.filter((todo) => {
+        return todo.id !==id;
+      })
+    )
   };
 
   return (

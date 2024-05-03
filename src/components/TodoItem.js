@@ -1,32 +1,40 @@
-/*
-  각각의 할 일 항목을 렌더링하는 컴포넌트입니다.
-  각 할 일의 완료 상태에 따라 체크박스와 텍스트 스타일을 동기화하며,
-  삭제 버튼을 통해 해당 할 일을 삭제할 수 있습니다.
-  이 컴포넌트는 `TodoList.js`에서 사용되어 할 일 목록을 구성합니다.
-*/
-import React from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
+import { updateDoc, doc } from 'firebase/firestore'; // Firebase의 firestore 모듈을 추가합니다.
+import { db } from '@/firebase'; // Firebase 인스턴스를 가져옵니다.
 
 const TodoItem = ({ todo, onToggle, onDelete }) => {
+  const [dueDate, setDueDate] = useState(todo.dueDate || ''); // 기존 todo에 저장된 날짜를 초기값으로 설정합니다.
+
+  const handleDateChange = (e) => {
+    setDueDate(e.target.value);
+  };
+
+  const handleConfirmDate = async () => {
+    const todoDoc = doc(db, 'todos', todo.id); // todoCollection에 해당하는 'todos' 컬렉션의 문서를 참조합니다.
+    await updateDoc(todoDoc, { dueDate }); // 해당 문서의 dueDate 필드를 업데이트합니다.
+  };
+
   return (
-    <li className="flex items-center justify-between w-full mb-4 p-2 bg-gray-0 rounded-md shadow-sm">
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={onToggle}
-        className="form-checkbox h-5 w-5 text-blue-1"
-      />
-      <span
-        className={`flex-grow mx-2 ${todo.completed ? "line-through" : ""}`}
-      >
-        {todo.text}
-      </span>
-      <Button
-        // className="ml-2 bg-red-500 font-bold text-white px-2 py-1 rounded cursor-pointer hover:bg-red-700"
-        onClick={onDelete}
-      >
-        DELETE
-      </Button>
+    <li className="flex items-center justify-between w-full mb-2">
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          className="mr-2 cursor-pointer"
+          checked={todo.completed}
+          onChange={onToggle}
+        />
+        <p className={`${todo.completed ? 'line-through' : ''}`}>{todo.text}</p>
+      </div>
+      <div className="flex items-center">
+        <input
+          type="date"
+          className="mr-2 p-1 rounded"
+          value={dueDate} // dueDate 상태를 바로 사용합니다.
+          onChange={handleDateChange} // 입력값이 변경될 때마다 상태를 업데이트합니다.
+        />
+        <button className="text-red-500" onClick={onDelete}>Delete</button>
+        <button className="ml-2 text-green-500" onClick={handleConfirmDate}>Confirm Date</button> {/* 날짜를 확정하는 버튼 */}
+      </div>
     </li>
   );
 };

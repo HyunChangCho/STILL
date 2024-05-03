@@ -6,38 +6,39 @@
 "use client";
 
 
-
 import React, { useState, useEffect } from "react";
 import TodoItem from "@/components/TodoItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-//import styles from "@/styles/Todolist.module.css"
-import {db} from "@/firebase";
-import{
+import { db } from "@/firebase";
+import {
   collection,
   query,
   doc,
+  getDoc,
   getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
   orderBy,
-  where,  
+  where,
 } from "firebase/firestore";
-//컬렉션 사용시 잘못된 컬렉션 이름 사용 방지
-const todoCollection = collection(db, "todos");
 
+const todoCollection = collection(db, "todos");
 
 const TodoList = () => {
   const [todos, setTodos] = useState([]);
   const [input, setInput] = useState("");
+  const [sortBy, setSortBy] = useState(null);
 
   useEffect(() => {
     getTodos();
-  }, []);
+  }, [sortBy]);
 
-  const getTodos = async () =>{
-    const q = query(todoCollection);
+  const getTodos = async () => {
+    const q = sortBy
+      ? query(todoCollection, orderBy("dueDate", sortBy), where("completed", "==", false))
+      : query(todoCollection, where("completed", "==", false));
 
     const results = await getDocs(q);
     const newTodos = [];
@@ -47,7 +48,7 @@ const TodoList = () => {
     });
 
     setTodos(newTodos);
-  }
+  };
 
   const addTodo = async () => {
     if (input.trim() === "") return;
@@ -55,40 +56,43 @@ const TodoList = () => {
     const docref = await addDoc(todoCollection, {
       text: input,
       completed: false,
+      dueDate: "",
     });
 
-    setTodos([...todos, { id: docref.id, text: input, completed: false }]);
+    setTodos([...todos, { id: docref.id, text: input, completed: false, dueDate: "" }]);
     setInput("");
   };
 
-
-
-  const toggleTodo = (id) => {
-    setTodos(
-      todos.map((todo) =>{
-      //   todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      if (todo.id ===id){
-        const todoDoc = doc(todoCollection, id);
-        updateDoc(todoDoc, {completed: !todo.completed});
-        return {...todo,completed: !todo.completed};
-      }else{
-        return todo;
-      }
-
-        }
-        ),
+  const toggleTodo = async (id) => {
+    const todoRef = doc(todoCollection, id);
+    const todoSnapshot = await getDoc(todoRef);
+  
+    if (todoSnapshot.exists()) {
+      const todoData = todoSnapshot.data();
+      const updatedCompleted = !todoData.completed;
+  
+      await updateDoc(todoRef, { completed: updatedCompleted });
+      setTodos(
+        todos.map((todo) =>
+          todo.id === id ? { ...todo, completed: updatedCompleted } : todo
+        )
       );
-    };
+    } else {
+      console.log('해당 문서가 존재하지 않습니다.');
+    }
+  };
 
-  const deleteTodo = (id) => {
+  const deleteTodo = async (id) => {
     const todoDoc = doc(todoCollection, id);
-    deleteDoc(todoDoc);
+    await deleteDoc(todoDoc);
 
     setTodos(
-      todos.filter((todo) => {
-        return todo.id !==id;
-      })
-    )
+      todos.filter((todo) => todo.id !== id)
+    );
+  };
+
+  const handleSortToggle = () => {
+    setSortBy(sortBy === "asc" ? "desc" : "asc");
   };
 
   return (
@@ -96,17 +100,15 @@ const TodoList = () => {
       <h1 className="text-center font-medium text-xl mb-6">Todo List</h1>
       <Input
         type="text"
-        // className="w-full p-3 mb-4 border-2 border-blue-500 rounded-full outline-none text-base"
         className="p-3 mb-4"
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
-      <Button
-        // className="px-5 py-2 bg-blue-500 text-white rounded-full cursor-pointer transition-colors duration-300 hover:bg-white hover:text-blue-500 hover:border-2 hover:border-blue-500"
-        className="py-2 mb-4"
-        onClick={addTodo}
-      >
+      <Button className="py-2 mb-4" onClick={addTodo}>
         Add To do
+      </Button>
+      <Button className="py-2 mb-4" onClick={handleSortToggle}>
+        {sortBy === "asc" ? "Sort by Date (Ascending)" : "Sort by Date (Descending)"}
       </Button>
       <ul>
         {todos.map((todo) => (
